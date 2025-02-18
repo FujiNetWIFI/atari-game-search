@@ -30,7 +30,7 @@ unsigned char pos_pan=0;
 #define BAR_BOTTOM_OF_WINDOW 21
 #define NUM_LINES 20
 
-#define DS_BASE "N:HTTP://apps.irata.online:9222/?query="
+#define DS_BASE "N:HTTPS://apps.irata.online/homesoft?query="
 #define LO_BASE "N:TNFS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
 
 char ds[256];
@@ -334,7 +334,21 @@ void load(void)
     while(1);
 }
 
-// scroll functions gon' be ugly. brace yourselves.
+/**
+ * @brief world's simplest joystick slow-down
+ */
+unsigned char joystick(void)
+{
+    OS.rtclok[2] &= 0x03;
+
+    if (!OS.rtclok[2])
+    {
+        while (!OS.rtclok[2]);
+        return OS.stick0;
+    }
+    else
+        return 0x0F;
+}
 
 void scroll_up(void)
 {
@@ -417,6 +431,25 @@ void select(void)
         if (CONSOL_OPTION(GTIA_READ.consol))
             load();
 
+        switch (joystick())
+        {
+        case 14: // up
+            select_up();
+            break;
+        case 13: // dn
+            select_down();
+            break;
+        case 11: // lf
+            pan_left();
+            break;
+        case 7:  // rt
+            pan_right();
+            break;
+        }
+
+        if (!OS.strig0)
+            load();
+        
         if (!kbhit())
             continue;
 
@@ -424,16 +457,24 @@ void select(void)
         {
         case 0x1B:
             return;
+        case 0x8E:
         case 0x1C:
+        case '-':
             select_up();
             break;
+        case 0x8F:
         case 0x1D:
+        case '=':
             select_down();
             break;
+        case 0x86:
         case 0x1E:
+        case '+':
             pan_left();
             break;
+        case 0x87:
         case 0x1F:
+        case '*':
             pan_right();
             break;
         }
