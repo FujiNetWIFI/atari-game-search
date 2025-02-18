@@ -30,7 +30,7 @@ unsigned char pos_pan=0;
 #define BAR_BOTTOM_OF_WINDOW 21
 #define NUM_LINES 20
 
-#define DS_BASE "N:HTTP://192.168.1.17:8080/?query="
+#define DS_BASE "N:HTTP://apps.irata.online:8080/?query="
 #define LO_BASE "N:TNFS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
 
 char ds[256];
@@ -302,6 +302,17 @@ void load(void)
     OS.chbas = 0xe0;
     OS.sdlst = (void *)0xBC20;
 
+    OS.pcolr0 =
+        OS.pcolr1 =
+        OS.pcolr2 =
+        OS.pcolr3 = 0;
+
+    OS.color0 = 0x28;
+    OS.color1 = 0xca;
+    OS.color2 = 0x94;
+    OS.color3 = 0x46;
+    OS.color4 = 0x00;
+    
     GTIA_WRITE.hposp0 =
         GTIA_WRITE.hposp1 =
         GTIA_WRITE.hposp2 =
@@ -315,7 +326,8 @@ void load(void)
     GTIA_WRITE.sizep0 =
         GTIA_WRITE.sizep1 =
         GTIA_WRITE.sizep2 =
-        GTIA_WRITE.sizep3 = 0;
+        GTIA_WRITE.sizep3 = 
+        GTIA_WRITE.sizem = 0;
     
     __asm__("JMP $03FD");
 

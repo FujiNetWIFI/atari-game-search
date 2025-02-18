@@ -49,6 +49,10 @@ search_directory (const char *path, const char *target_lower)
 	  || strcmp (entry->d_name, "..") == 0)
 	continue;
 
+      // Temporary until ATRs can be mounted.
+      if (!strcasestr(entry->d_name, ".xex"))
+	      continue;
+
       char fullpath[128];
       memset(fullpath,0,sizeof(fullpath));
       
