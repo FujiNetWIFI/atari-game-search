@@ -30,7 +30,7 @@ unsigned char pos_pan=0;
 #define BAR_BOTTOM_OF_WINDOW 21
 #define NUM_LINES 20
 
-#define DS_BASE "N:HTTP://apps.irata.online:8080/?query="
+#define DS_BASE "N:HTTP://apps.irata.online:9222/?query="
 #define LO_BASE "N:TNFS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
 
 char ds[256];
