@@ -73,6 +73,12 @@ search_directory (const char *path, const char *target_lower)
 	  search_directory (fullpath, target_lower);
 	}
 
+      if (strcasestr(entry->d_name,".atr"))
+	      continue;
+
+      if (!strcasestr(entry->d_name, ".xex"))
+	      continue;
+
       if (strcasestr (entry->d_name, target_lower))
 	{
             if (num_results == RESULTS_MAX-1)
