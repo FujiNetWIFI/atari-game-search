@@ -1,0 +1,98 @@
+mads 2.1.1
+Source: loader-stack.s
+     1 				        opt h-
+     2 				        org $0120
+     3
+     4 = 02E0			RUNAD   =   $02E0       ; RUN ADDRESS
+     5 = 02E2			INITAD  =   $02E2       ; INIT ADDRESS
+     6 = 02EA			DVSTAT  =   $02EA
+     7 = 0300			DCB     =   $0300       ; BASE
+     8 = 0303			DSTATS  =   $0303       ; STATUS
+     9
+    10 = E459			SIOV    =   $E459        
+    11 				        
+    12 0120 71			STADCB: .BYTE   $71      ; DDEVIC
+    13 0121 01			        .BYTE   $01         ; DUNIT
+    14 0122 53			        .BYTE   'S'         ; DCOMND
+    15 0123 40			        .BYTE   $40         ; DSTATS
+    16 0124 EA			        .BYTE   <DVSTAT     ; DBUFL
+    17 0125 02			        .BYTE   >DVSTAT     ; DBUFH
+    18 0126 0F			        .BYTE   $0F         ; DTIMLO
+    19 0127 00			        .BYTE   $00         ; DRESVD
+    20 0128 04			        .BYTE   $04         ; DBYTL
+    21 0129 00			        .BYTE   $00         ; DBYTH
+    22 012A 00			        .BYTE   $00         ; DAUX1
+    23 012B 00			        .BYTE   $00         ; DAUX2
+    24
+    25 012C 71			CLODCB .BYTE     $71      ; DDEVIC
+    26 012D 01			        .BYTE    $01         ; DUNIT
+    27 012E 43			        .BYTE    'C'         ; DCOMND
+    28 012F 00			        .BYTE    $00         ; DSTATS
+    29 0130 00			        .BYTE    $00         ; DBUFL
+    30 0131 00			        .BYTE    $00         ; DBUFH
+    31 0132 0F			        .BYTE    $0F         ; DTIMLO
+    32 0133 00			        .BYTE    $00         ; DRESVD
+    33 0134 00			        .BYTE    $00         ; DBYTL
+    34 0135 00			        .BYTE    $00         ; DBYTH
+    35 0136 00			        .BYTE    $00         ; DAUX1
+    36 0137 00			        .BYTE    $00         ; DAUX2
+    37
+    38 0138			BINDCB:
+    39 0138 71			        .BYTE    $71      ; DDEVIC
+    40 0139 01			        .BYTE    $01         ; DUNIT
+    41 013A 52			        .BYTE    'R'         ; DCOMND
+    42 013B 40			        .BYTE    $40         ; DSTATS
+    43 013C FF			        .BYTE    $FF         ; DBUFL
+    44 013D FF			        .BYTE    $FF         ; DBUFH
+    45 013E 0F			        .BYTE    $0F         ; DTIMLO
+    46 013F 00			        .BYTE    $00         ; DRESVD
+    47 0140 FF			        .BYTE    $FF         ; DBYTL
+    48 0141 FF			        .BYTE    $FF         ; DBYTH
+    49 0142 FF			        .BYTE    $FF         ; DAUX1
+    50 0143 FF			        .BYTE    $FF         ; DAUX2
+    51 				        
+    52 0144			CLEAR_MENU:    
+    53 0144 A9 00		    	lda #0
+    54 0146 A2 00		    	ldx #0
+    55 0148 A0 B8		    	ldy #$b8
+    56 014A 9D 00 07		cloop 	sta $0700,x
+    57 014D E8			    	inx
+    58 014E D0 FA		    	bne cloop
+    59 0150 EE 4C 01		    	inc cloop+2  ; increasing HI-byte of the clearing address
+    60 0153 88			    	dey
+    61 0154 D0 F4		    	bne cloop
+    62 0156 60				RTS
+    63
+    64 0157			LOAD_SETUP:
+    65 0157 A9 C0		        LDA     #$C0
+    66 0159 8D E0 02		        STA     RUNAD
+    67 015C A9 E4		        LDA     #$E4
+    68 015E 8D E1 02		        STA     RUNAD+1
+    69 0161 60			        RTS
+    70
+    71 0162			LOAD_INIT:
+    72 0162 A9 C0		        LDA     #$C0
+    73 0164 8D E2 02		        STA     INITAD
+    74 0167 A9 E4		        LDA     #$E4
+    75 0169 8D E3 02		        STA     INITAD+1
+    76 016C 60			        RTS
+    77
+    78 016D			DOSIOV:
+    79 016D 8D 76 01		        STA     DODCBL+1
+    80 0170 8C 77 01		        STY     DODCBL+2
+    81 0173 A0 0B		        LDY     #$0B
+    82 0175 B9 FF FF		DODCBL  LDA     $FFFF,Y
+    83 0178 99 00 03		        STA     DCB,Y
+    84 017B 88			        DEY
+    85 017C 10 F7		        BPL     DODCBL
+    86
+    87 017E			SIOVDST:
+    88 017E 20 59 E4		        JSR     SIOV
+    89 0181 AC 03 03		        LDY     DSTATS
+    90 0184 98			        TYA
+    91 0185 60			        RTS
+    92
+    93 0186			LOAD_CLOSE:
+    94 0186 A9 2C		        LDA     #<CLODCB
+    95 0188 A0 01		        LDY     #>CLODCB
+    96 018A 4C 6D 01		        JMP     DOSIOV
