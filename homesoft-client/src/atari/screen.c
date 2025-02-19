@@ -296,6 +296,7 @@ void load(void)
 
     network_open(ds,4,0);
 
+    memcpy((void *)0x0120,loader_stack_bin,sizeof(loader_stack_bin));
     memcpy((void *)0x3FD,loader_bin,sizeof(loader_bin)); 
 
     OS.sdmctl = 0x22;

@@ -22,8 +22,17 @@ DAUXH   =   DCB+11      ; AUX BYTE H
 
 SIOV    =   $E459               ; SIO VECTOR
 EOF     =   136
-        
-     
+        ;; Put DCBs in the stack.
+STADCB  =   $0120
+CLODCB  =   $012C
+BINDCB  =   $0138        
+        ;; Put utility functions in stack, check loader-stack.lst.
+CLEAR_MENU = $0144
+LOAD_SETUP = $0157
+LOAD_INIT  = $0162
+DOSIOV     = $016D
+LOAD_CLOSE = $0186        
+
         .ENUM   DCB_IDX
                                 ;---------------
         DDEVIC              ; 0
@@ -49,66 +58,6 @@ EOF     =   136
         BPL     ?DCBL
         .ENDL
         .ENDM
-
-	JMP	DO_LOAD
-
-STADCB: .BYTE   $71      ; DDEVIC
-        .BYTE   $01         ; DUNIT
-        .BYTE   'S'         ; DCOMND
-        .BYTE   $40         ; DSTATS
-        .BYTE   <DVSTAT     ; DBUFL
-        .BYTE   >DVSTAT     ; DBUFH
-        .BYTE   $0F         ; DTIMLO
-        .BYTE   $00         ; DRESVD
-        .BYTE   $04         ; DBYTL
-        .BYTE   $00         ; DBYTH
-        .BYTE   $00         ; DAUX1
-        .BYTE   $00         ; DAUX2
-
-                                ; Copy command's template DCB struct to OS's DCB struct (12 bytes)
-DOSIOV:
-        STA     DODCBL+1
-        STY     DODCBL+2
-                                ;        LDY     #$0C
-        LDY     #$0B
-DODCBL  LDA     $FFFF,Y
-        STA     DCB,Y
-        DEY
-        BPL     DODCBL
-
-SIOVDST:
-        JSR     SIOV
-        LDY     DSTATS
-        TYA
-        RTS
-
-CLODCB .BYTE     $71      ; DDEVIC
-        .BYTE    $01         ; DUNIT
-        .BYTE    'C'         ; DCOMND
-        .BYTE    $00         ; DSTATS
-        .BYTE    $00         ; DBUFL
-        .BYTE    $00         ; DBUFH
-        .BYTE    $0F         ; DTIMLO
-        .BYTE    $00         ; DRESVD
-        .BYTE    $00         ; DBYTL
-        .BYTE    $00         ; DBYTH
-        .BYTE    $00         ; DAUX1
-        .BYTE    $00         ; DAUX2
-
-        ;; Loader borrowed from NOS. Thank you, Michael.
-        ;; self-modifying memclear borrowed from MaPa
-
-CLEAR_MENU:    
-    	lda #0
-    	ldx #0
-    	ldy #$b8
-cloop 	sta $0700,x
-    	inx
-    	bne cloop
-    	inc cloop+2  ; increasing HI-byte of the clearing address
-    	dey
-    	bne cloop
-	RTS
 
 DO_LOAD:
         JSR     CLEAR_MENU
@@ -140,24 +89,6 @@ GETFIL: JSR     LOAD_READ2      ; Get two bytes (binary header)
 JINIT:  JMP     (INITAD)        ; Will either RTS or perform INIT
 JSTART: JMP     (RUNAD)         ; Godspeed.
 R:      RTS                     ; Stunt-double for (INITAD),(RUNAD)
-
-;---------------------------------------
-LOAD_SETUP:
-;---------------------------------------
-        LDA     #<R
-        STA     RUNAD
-        LDA     #>R
-        STA     RUNAD+1
-        RTS
-
-;---------------------------------------
-LOAD_INIT:
-;---------------------------------------
-        LDA     #<R
-        STA     INITAD
-        LDA     #>R
-        STA     INITAD+1
-        RTS
 
 ;---------------------------------------
 LOAD_READ2:
@@ -485,27 +416,6 @@ CHECK_EOF_DONE:
         LDY     #$01        ; Return success
         RTS
 
-BINDCB:
-       .BYTE    $71      ; DDEVIC
-       .BYTE    $01         ; DUNIT
-       .BYTE    'R'         ; DCOMND
-       .BYTE    $40         ; DSTATS
-       .BYTE    $FF         ; DBUFL
-       .BYTE    $FF         ; DBUFH
-       .BYTE    $0F         ; DTIMLO
-       .BYTE    $00         ; DRESVD
-       .BYTE    $FF         ; DBYTL
-       .BYTE    $FF         ; DBYTH
-       .BYTE    $FF         ; DAUX1
-       .BYTE    $FF         ; DAUX2
-
-;---------------------------------------
-LOAD_CLOSE:
-;---------------------------------------
-        LDA     #<CLODCB
-        LDY     #>CLODCB
-        JMP     DOSIOV
-
                                 ; Binary loader working variables
 BAL     .ds 1
 BAH     .ds 1    ;
@@ -526,6 +436,4 @@ BODYSZH .ds 1
 STL2    .ds 1   ; Payload Start address (working var)
 STH2    .ds 1
 BIN_1ST .ds 1   ; Flag for binary loader signature (FF -> 1st pass)
-TMP1    .ds 1
-TMP2    .ds 1
         
