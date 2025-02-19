@@ -1,0 +1,17 @@
+The following games do not work, due to loading data onto page 1:
+
+```
+./C/Courting Crickets.xex
+./G/Grab an Apple.xex
+ERROR - Corrupt file: Incomplete address
+./I/Invasion - Planetary Defense.xex
+./J/Jurassic Park II.xex
+./K/Koronis Rift (130 XE).xex
+./L/Lava Run.xex
+./M/MULE (Multi-Joy).xex
+./P/Pooyan.xex
+./S/Starbase 13.xex
+./T/Trolls (130 XE).xex
+./V/Vicky.xex
+./V/Vicky (Intro Version).xex
+```
