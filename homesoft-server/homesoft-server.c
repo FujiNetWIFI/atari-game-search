@@ -10,14 +10,14 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 
-#define RESULTS_MAX 128 
-#define RESULTS_SIZE 128 
+#define RESULTS_MAX 128
+#define RESULTS_SIZE 128
 
 char results[RESULTS_MAX][RESULTS_SIZE];
 
 char argv_path[256];
 
-int num_results=0;
+unsigned int num_results=0;
 
 char ascii_to_atari(char c)
 {
@@ -27,7 +27,7 @@ char ascii_to_atari(char c)
         c+=64;
     else if (c<96)
         c-=32;
-        
+
     return c;
 }
 
@@ -35,7 +35,7 @@ void
 search_directory (const char *path, const char *target_lower)
 {
   DIR *dir = opendir (path);
-  
+
   if (!dir)
     {
       fprintf (stderr, "Error opening %s: %s\n", path, strerror (errno));
@@ -49,9 +49,9 @@ search_directory (const char *path, const char *target_lower)
 	  || strcmp (entry->d_name, "..") == 0)
 	continue;
 
-      char fullpath[128];
+      char fullpath[RESULTS_SIZE];
       memset(fullpath,0,sizeof(fullpath));
-      
+
       int path_len =
 	snprintf (fullpath, sizeof (fullpath), "%s/%s", path, entry->d_name);
       if (path_len < 0 || (size_t) path_len >= sizeof (fullpath))
@@ -75,11 +75,11 @@ search_directory (const char *path, const char *target_lower)
 
       if (strcasestr (entry->d_name, target_lower))
 	{
-            if (num_results > RESULTS_MAX)
+            if (num_results == RESULTS_MAX-1)
                 break;
 
             strcpy(results[num_results],&fullpath[strlen(argv_path)+1]);
-	    
+
 	    // Get rid of the null terminator, so we don't trip over it during screen code conversion.
 	    results[num_results][strlen(results[num_results])] = 0x20;
 
@@ -103,7 +103,7 @@ handle_request (int client_socket)
   // Clear the result buffer
   memset (results,0x20, RESULTS_MAX*RESULTS_SIZE);
   num_results = 0;
-  
+
   // Read the request
   read (client_socket, buffer, sizeof(buffer));
 
@@ -112,7 +112,7 @@ handle_request (int client_socket)
   if (q_param)
     {
       // Extract query value
-      sscanf (q_param, "query=%[^ &\n\r]", query);
+      sscanf (q_param, "query=%255[^ &\n\r]", query);
 
       // URL decode the query (basic implementation)
       char *src = query;
@@ -125,7 +125,7 @@ handle_request (int client_socket)
 	    }
 	  else if (*src == '%' && src[1] && src[2])
 	    {
-	      int value;
+	      unsigned int value;
 	      sscanf (src + 1, "%2x", &value);
 	      *dst = value;
 	      src += 2;
@@ -142,7 +142,7 @@ handle_request (int client_socket)
 
   printf("query is: %s\n",query);
   search_directory(argv_path,query);
-  
+
   // Prepare response
   sprintf (header,
 	   "HTTP/1.1 200 OK\r\n"
@@ -168,7 +168,7 @@ main (int argc, char *argv[])
 
     int port = atoi(argv[1]);
     strncpy(argv_path,argv[2],sizeof(argv_path)-1);
-    
+
   int server_fd, client_socket;
   struct sockaddr_in address;
   int opt = 1;
