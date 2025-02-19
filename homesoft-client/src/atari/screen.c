@@ -18,8 +18,8 @@
 static char title[] = "\x00\x00homesoft\x00\x00search\x00\x00";
 static char query[] = {0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-#define RESULTS_MAX 128
-#define RESULTS_SIZE 128
+#define RESULTS_MAX 128 
+#define RESULTS_SIZE 128 
 
 char results[RESULTS_MAX][RESULTS_SIZE];
 unsigned char num_results=0;
@@ -299,7 +299,9 @@ void load(void)
     memcpy((void *)0x0120,loader_stack_bin,sizeof(loader_stack_bin));
     memcpy((void *)0x3FD,loader_bin,sizeof(loader_bin)); 
 
-    OS.sdmctl = 0x22;
+    ANTIC.pmbase = 0x00;
+    
+    OS.sdmctl = 0x0;
     OS.chbas = 0xe0;
     OS.sdlst = (void *)0xBC20;
 
@@ -486,6 +488,9 @@ void screen_query(void)
 {    
     unsigned char caddr = (unsigned short)&charset[0] >> 8;
 
+    PIA.portb = 0xFF; // Turn off BASIC
+    OS.coldst = 1;    // Force coldstart
+    
     OS.color0=0x0E;
     OS.color1=0x4A;
     OS.color2=0x42;
