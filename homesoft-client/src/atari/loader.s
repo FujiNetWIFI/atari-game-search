@@ -95,10 +95,9 @@ LOAD_CHKFF:
     ; and read next 2 bytes
     ;---------------------------------------
 
-        LDA     #$FF
-        CMP     BAL         ; Is 1st byte FF?
-        BNE     NOTFF       ; If no, skip down.
-        CMP     BAH         ; Is 2nd byte FF?
+        LDA     BAL         ; Is 1st byte FF?
+        AND     BAH         ; Is 2nd byte FF?
+        CMP     #$FF
         BNE     NOTFF       ; If no, skip down.
 
     ;---------------------------------------
@@ -323,8 +322,7 @@ GETDAT_DOSIOV:
 ;---------------------------------------
     ; Bail if BL = 0
         LDA     BLL
-        BNE     :+
-        LDA     BLH
+        ORA     BLH
         BEQ     CHECK_EOF_DONE
 
 :
