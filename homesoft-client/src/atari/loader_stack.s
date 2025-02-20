@@ -3,7 +3,7 @@
         .export load_init
         .export dosiov
         .export bindcb
-        .export clodcb
+        ; .export clodcb
         .export stadcb
 
         .include "atari.inc"
@@ -55,26 +55,26 @@ stadcb:
         .BYTE   $40         ; DSTATS
         .BYTE   <DVSTAT     ; DBUFL
         .BYTE   >DVSTAT     ; DBUFH
-        .BYTE   $0F         ; DTIMLO
+        .BYTE   $05         ; DTIMLO
         .BYTE   $00         ; DRESVD
         .BYTE   $04         ; DBYTL
         .BYTE   $00         ; DBYTH
         .BYTE   $00         ; DAUX1
         .BYTE   $00         ; DAUX2
 
-clodcb:
-        .BYTE   $71         ; DDEVIC
-        .BYTE   $01         ; DUNIT
-        .BYTE   'C'         ; DCOMND
-        .BYTE   $00         ; DSTATS
-        .BYTE   $00         ; DBUFL
-        .BYTE   $00         ; DBUFH
-        .BYTE   $0F         ; DTIMLO
-        .BYTE   $00         ; DRESVD
-        .BYTE   $00         ; DBYTL
-        .BYTE   $00         ; DBYTH
-        .BYTE   $00         ; DAUX1
-        .BYTE   $00         ; DAUX2
+; clodcb:
+;         .BYTE   $71         ; DDEVIC
+;         .BYTE   $01         ; DUNIT
+;         .BYTE   'C'         ; DCOMND
+;         .BYTE   $00         ; DSTATS
+;         .BYTE   $00         ; DBUFL
+;         .BYTE   $00         ; DBUFH
+;         .BYTE   $05         ; DTIMLO
+;         .BYTE   $00         ; DRESVD
+;         .BYTE   $00         ; DBYTL
+;         .BYTE   $00         ; DBYTH
+;         .BYTE   $00         ; DAUX1
+;         .BYTE   $00         ; DAUX2
 
 bindcb:
         .BYTE   $71         ; DDEVIC
@@ -83,7 +83,7 @@ bindcb:
         .BYTE   $40         ; DSTATS
         .BYTE   $FF         ; DBUFL
         .BYTE   $FF         ; DBUFH
-        .BYTE   $0F         ; DTIMLO
+        .BYTE   $05         ; DTIMLO
         .BYTE   $00         ; DRESVD
         .BYTE   $FF         ; DBYTL
         .BYTE   $FF         ; DBYTH

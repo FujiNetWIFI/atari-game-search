@@ -32,8 +32,7 @@ _load_app:
         JSR     load_setup
         JSR     LOAD_READ2
         JSR     LOAD_CHKFF
-        CPY     #$01
-        BNE     R
+        BCS     R
 
         INC     BIN_1ST
         ; Process each payload
@@ -47,7 +46,7 @@ GETFIL: JSR     LOAD_READ2      ; Get two bytes (binary header)
         JSR     LOAD_ENDAD      ; Put end address in
         JSR     LOAD_BUFLEN     ; Calculate buffer length
         JSR     LOAD_GETDAT     ; Get the data record
-        BPL     :+              ; Was EOF detected?
+        BCC     :+              ; Was EOF detected?
 
         JSR     JSTART          ; Yes. Go to RUNAD
 :       JSR     JINIT           ; Attempt initialization
@@ -56,14 +55,6 @@ GETFIL: JSR     LOAD_READ2      ; Get two bytes (binary header)
 JINIT:  JMP     (INITAD)        ; Will either RTS or perform INIT
 JSTART: JMP     (RUNAD)         ; Godspeed.
 R:      RTS                     ; Stunt-double for (INITAD),(RUNAD)
-
-;         JMP     (RUNAD)         ; Godspeed
-
-; :       JSR     JINIT           ; Attempt initialization
-;         JMP     GETFIL          ; Process next payload
-
-; JINIT:  JMP     (INITAD)        ; Will either RTS or perform INIT
-; R:      RTS                     ; Stunt-double for (INITAD),(RUNAD)
 
 ;---------------------------------------
 LOAD_READ2:
@@ -121,12 +112,14 @@ LOAD_CHKFF:
     ; On 1st pass, print error.
     ; On 2..n passes, the 2 bytes = payload start addr.
     ;---------------------------------------
-NOTFF:  LDY     #$01        ; Preload success return code
+NOTFF:
         CMP     BIN_1ST     ; A still has FF. BIN_1ST = FF on first pass
         BNE     NOTFF_DONE  ; Not 1st pass, exit with success.
 
-        LDY     #$FF        ; Return failure
+        ; Return failure (C is already set if the value matches in CMP)
+        RTS
 NOTFF_DONE:
+        CLC
         RTS
 
 ;---------------------------------------
@@ -184,11 +177,11 @@ LOAD_GETDAT:
 ;---------------------------------------
     ; Definitions:
     ; HEAD = requested bytes that will be found in current cache (< 512 bytes)
-    ; BODY = contiguous 512 byte sections. BODY = n * 512 bytes)
+    ; BODY = contiguous 512 byte sections. BODY = n * 512 bytes
     ; TAIL = any bytes remaining after BODY (< 512 bytes)
 
         JSR     GETDAT_CHECK_EOF    ; Check EOF before proceeding
-        BPL     GETDAT_NEXT1        ; If true, then EOF found. Exit
+        BCC     GETDAT_NEXT1        ; If true, then EOF found. Exit
         RTS
 
     ; Check if bytes requested BL < DVSTAT (bytes waiting in cache)
@@ -280,7 +273,7 @@ GETDAT_READ:
         LDA     HEADH
         STA     BLH
         JSR     GETDAT_DOSIOV
-        BPL     GETDAT_BODY ; Skip ahead if no problems
+        BCC     GETDAT_BODY ; Skip ahead if no problems
         RTS                 ; Bail if error
 
     ;---------------------------------------
@@ -299,7 +292,7 @@ GETDAT_BODY_LOOP:
         TXA                 ; Stash our loop index (X)
         PHA                 ; onto the stack
         JSR     GETDAT_DOSIOV
-        BPL     :+          ; Skip ahead if no problems
+        BCC     :+          ; Skip ahead if no problems
         PLA                 ; Here if problem. Clean up stack
         TYA                 ; Reset N status flag before returning
         RTS                 ; Bail if error
@@ -377,11 +370,12 @@ GETDAT_CHECK_EOF:
         LDA     #EOFERR         ; 136 defined in atari.inc
         CMP     DVSTAT+3        ; Is it EOF
         BNE     CHECK_EOF_DONE  ; No? Go to success
-        LDY     #$FF            ; Yes? Return -1
+
+        ; Yes? Return C set (it's set by the CMP)
         RTS
 
 CHECK_EOF_DONE:
-        LDY     #$01        ; Return success
+        CLC        ; Return success
         RTS
 
 ; these have to be part of the LOADER segment
