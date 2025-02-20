@@ -30,8 +30,6 @@
 _load_app:
         JSR     clear_menu
         JSR     load_setup
-        LDA     #$FF
-        STA     BIN_1ST
         JSR     LOAD_READ2
         JSR     LOAD_CHKFF
         CPY     #$01
@@ -50,6 +48,7 @@ GETFIL: JSR     LOAD_READ2      ; Get two bytes (binary header)
         JSR     LOAD_BUFLEN     ; Calculate buffer length
         JSR     LOAD_GETDAT     ; Get the data record
         BPL     :+              ; Was EOF detected?
+
         JSR     JSTART          ; Yes. Go to RUNAD
 :       JSR     JINIT           ; Attempt initialization
         JMP     GETFIL          ; Process next payload
@@ -57,6 +56,14 @@ GETFIL: JSR     LOAD_READ2      ; Get two bytes (binary header)
 JINIT:  JMP     (INITAD)        ; Will either RTS or perform INIT
 JSTART: JMP     (RUNAD)         ; Godspeed.
 R:      RTS                     ; Stunt-double for (INITAD),(RUNAD)
+
+;         JMP     (RUNAD)         ; Godspeed
+
+; :       JSR     JINIT           ; Attempt initialization
+;         JMP     GETFIL          ; Process next payload
+
+; JINIT:  JMP     (INITAD)        ; Will either RTS or perform INIT
+; R:      RTS                     ; Stunt-double for (INITAD),(RUNAD)
 
 ;---------------------------------------
 LOAD_READ2:
@@ -166,16 +173,11 @@ LOAD_BUFLEN:
         STA     BLH     ; Buffer Length Hi
 
     ; Add 1
-        CLC
-        LDA     BLL
-        ADC     #$01
-        STA     BLL
+        INC     BLL
+        BNE     :+
+        INC     BLH
+:       RTS
 
-        LDA     BLH
-        ADC     #$00    ; Take care of any carry
-        STA     BLH
-
-        RTS
 
 ;---------------------------------------
 LOAD_GETDAT:
@@ -382,6 +384,7 @@ CHECK_EOF_DONE:
         LDY     #$01        ; Return success
         RTS
 
+; these have to be part of the LOADER segment
 
 BAL:            .res 1
 BAH:            .res 1
@@ -399,5 +402,5 @@ TAILL:          .res 1
 TAILH:          .res 1
 STL2:           .res 1
 STH2:           .res 1
-BIN_1ST:        .res 1
 
+BIN_1ST:        .byte $FF
