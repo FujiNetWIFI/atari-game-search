@@ -1,6 +1,6 @@
 # homesoft-client
 
-It's time to write your docs about YOUR AWESOME APP!
+Simple, clean interface for searching and playing games from HomeSoft.
 
 ## building
 

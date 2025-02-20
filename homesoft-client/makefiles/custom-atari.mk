@@ -15,9 +15,8 @@ LDFLAGS += -C src/atari/custom-atari.cfg
 SUFFIX = .com
 DISK_TASKS += .atr
 PICOBOOT_DOWNLOAD_URL = https://github.com/FujiNetWIFI/assets/releases/download/picobin/picoboot.bin
-
-# atari cache dir
 ATARI_CACHE_DIR := $(CACHE_DIR)/atari
+DISK_FILE := $(DIST_DIR)/$(PROGRAM).atr
 
 .atr:
 	@which dir2atr > /dev/null 2>&1 ; \

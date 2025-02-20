@@ -6,9 +6,10 @@ The server scans a folder recursively and returns sub-paths based on substring m
 
 The client asks the server for matches, and then opens a connection to read them.
 
-**WARNING** 
+## WARNING
 
 This code is a prototype and really needs refactoring.
 
 -Thom Cherryhomes - 2025-02-18
 
+"Hold my beer" - Mark Fisher, 2025-02-20

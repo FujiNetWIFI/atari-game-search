@@ -1,21 +1,4 @@
-# Sample Makefile For FujiNet Applications
-# 2024
-#
-# Copy the entire makefiles folder and all included files into your local project.
-
-# Copy _this_ Makefile into the root of you local project and edit as needed. 
-#  It works with cc65 and other compilers and has automation to find 
-#  the specified fujinet-lib and extract it for you automatically in this project.
-#
-# Set the TARGETS and PROGRAM values as required below.
-# Set the FUJINET_BUILD_TOOLS_DIR to where your apple2 disk tools are.
-# Disk tools for Coco, Atari, Adam and C64 should already be built and in your path.
-# Set the FUJINET_LIB_VERSION version you want to include.
-# See makefiles/build.mk for details on directory structure for src files and how to add custom extensions to the build.
-#
-# delete all comments above this when you use this as your Makefile
-
-
+# Makefile for homesoft-client
 
 TARGETS = atari
 PROGRAM := homesoft-client
@@ -24,15 +7,10 @@ PROGRAM := homesoft-client
 DEBUG := true
 export DEBUG
 
-# Edit below to point to a folder that has the apple-tools AppleComander and bitsy.bye script
-# which can be this repo itself if you have it on your system, otherwise point to the apple-tools
-# folder you have on your system.
-export FUJINET_BUILD_TOOLS_DIR := ../fujinet-build-tools
-
 # Set this to the version of FN-LIB you wish to use in this project:
 export FUJINET_LIB_VERSION := 4.7.4
 
-SUB_TASKS := clean disk test release
+SUB_TASKS := clean disk test test-disk release
 .PHONY: all help $(SUB_TASKS)
 
 all:
@@ -64,6 +42,7 @@ help:
 	@echo "release   - create a release of the executable in the build/ dir"
 	@echo "disk      - generate platform specific disk images in dist/ dir"
 	@echo "test      - run application in emulator for given platform."
+	@echo "test-disk  - create and run emulator with disk release"
 	@echo "            specific platforms may expose additional variables to run with"
 	@echo "            different emulators, see makefiles/custom-<platform>.mk"
 	
