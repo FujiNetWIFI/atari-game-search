@@ -1,67 +1,35 @@
-        opt h-
-        org $03FD
+        .export _load_app
 
-RUNAD   =   $02E0       ; RUN ADDRESS
-INITAD  =   $02E2       ; INIT ADDRESS
-MEMLO   =   $02E7       ; MEM LO
-DVSTAT  =   $02EA       ; 4 BYTE STATS
+        .import clear_menu
+        .import load_setup
+        .import load_init
+        .import dosiov
+        .import bindcb
+        .import stadcb
 
-DCB     =   $0300       ; BASE
-DDEVIC  =   DCB         ; DEVICE #
-DUNIT   =   DCB+1       ; UNIT #
-DCOMND  =   DCB+2       ; COMMAND
-DSTATS  =   DCB+3       ; STATUS/DIR
-DBUFL   =   DCB+4       ; BUF ADR L
-DBUFH   =   DCB+5       ; BUF ADR H
-DTIMLO  =   DCB+6       ; TIMEOUT (S)
-DRSVD   =   DCB+7       ; NOT USED
-DBYTL   =   DCB+8       ; BUF LEN L
-DBYTH   =   DCB+9       ; BUF LEN H
-DAUXL   =   DCB+10      ; AUX BYTE L
-DAUXH   =   DCB+11      ; AUX BYTE H
+        .include "atari.inc"
 
-SIOV    =   $E459               ; SIO VECTOR
-EOF     =   136
-        ;; Put DCBs in the stack.
-STADCB  =   $0120
-CLODCB  =   $012C
-BINDCB  =   $0138        
-        ;; Put utility functions in stack, check loader-stack.lst.
-CLEAR_MENU = $0144
-LOAD_SETUP = $0157
-LOAD_INIT  = $0162
-DOSIOV     = $016D
-LOAD_CLOSE = $0186        
+.struct IO_DCB
+        .org $0300
+        ddevic  .byte
+        dunit   .byte
+        dcomnd  .byte
+        dstats  .byte
+        dbuflo  .byte
+        dbufhi  .byte
+        dtimlo  .byte
+        dunuse  .byte
+        dbytlo  .byte
+        dbythi  .byte
+        daux1   .byte
+        daux2   .byte
+.endstruct
 
-        .ENUM   DCB_IDX
-                                ;---------------
-        DDEVIC              ; 0
-        DUNIT               ; 1
-        DCOMND              ; 2
-        DSTATS              ; 3
-        DBUFL               ; 4
-        DBUFH               ; 5
-        DTIMLO              ; 6
-        DRESVD              ; 7
-        DBYTL               ; 8
-        DBYTH               ; 9
-        DAUX1               ; 10
-        DAUX2               ; 11
-        .ENDE
+.segment "LOADER"
 
-        .MACRO DCBC
-        .LOCAL
-        LDY     #$0C
-        ?DCBL   LDA     %%1,Y
-        STA     DCB,Y
-        DEY
-        BPL     ?DCBL
-        .ENDL
-        .ENDM
-
-DO_LOAD:
-        JSR     CLEAR_MENU
-        JSR     LOAD_SETUP
+_load_app:
+        JSR     clear_menu
+        JSR     load_setup
         LDA     #$FF
         STA     BIN_1ST
         JSR     LOAD_READ2
@@ -70,10 +38,10 @@ DO_LOAD:
         BNE     R
 
         INC     BIN_1ST
-    ; Process each payload
+        ; Process each payload
 GETFIL: JSR     LOAD_READ2      ; Get two bytes (binary header)
         BMI     R               ; Exit if EOF hit
-        JSR     LOAD_INIT       ; Set init default
+        JSR     load_init       ; Set init default
         LDX     #$01
         JSR     LOAD_CHKFF      ; Check if header (and start addr, too)
         JSR     LOAD_STRAD      ; Put start address in
@@ -81,9 +49,9 @@ GETFIL: JSR     LOAD_READ2      ; Get two bytes (binary header)
         JSR     LOAD_ENDAD      ; Put end address in
         JSR     LOAD_BUFLEN     ; Calculate buffer length
         JSR     LOAD_GETDAT     ; Get the data record
-        BPL     @+              ; Was EOF detected?
+        BPL     :+              ; Was EOF detected?
         JSR     JSTART          ; Yes. Go to RUNAD
-@:      JSR     JINIT           ; Attempt initialization
+:       JSR     JINIT           ; Attempt initialization
         JMP     GETFIL          ; Process next payload
 
 JINIT:  JMP     (INITAD)        ; Will either RTS or perform INIT
@@ -330,12 +298,12 @@ GETDAT_BODY_LOOP:
         TXA                 ; Stash our loop index (X)
         PHA                 ; onto the stack
         JSR     GETDAT_DOSIOV
-        BPL     @+          ; Skip ahead if no problems
+        BPL     :+          ; Skip ahead if no problems
         PLA                 ; Here if problem. Clean up stack
         TYA                 ; Reset N status flag before returning
         RTS                 ; Bail if error
 
-@:      PLA                 ; Retrieve our loop index
+:       PLA                 ; Retrieve our loop index
         TAX                 ; and xfer it back into X
         DEX                 ; -2 (we pull 0200 bytes at a time)
         DEX                 ;
@@ -355,29 +323,29 @@ GETDAT_DOSIOV:
 ;---------------------------------------
     ; Bail if BL = 0
         LDA     BLL
-        BNE     @+
+        BNE     :+
         LDA     BLH
         BEQ     CHECK_EOF_DONE
 
-@:
+:
     ; SIO READ
         LDA     STL
-        STA     BINDCB+DCB_IDX.DBUFL    ; Start Address Lo
+        STA     bindcb + IO_DCB::dbuflo - DCB    ; Start Address Lo
         LDA     STH
-        STA     BINDCB+DCB_IDX.DBUFH    ; Start Address Hi
+        STA     bindcb + IO_DCB::dbufhi - DCB    ; Start Address Hi
         LDA     BLL
-        STA     BINDCB+DCB_IDX.DBYTL    ; Buffer Size Lo
-        STA     BINDCB+DCB_IDX.DAUX1
+        STA     bindcb + IO_DCB::dbytlo - DCB    ; Buffer Size Lo
+        STA     bindcb + IO_DCB::daux1 - DCB
         LDA     BLH
-        STA     BINDCB+DCB_IDX.DBYTH    ; Buffer Size Hi
-        STA     BINDCB+DCB_IDX.DAUX2
+        STA     bindcb + IO_DCB::dbythi - DCB    ; Buffer Size Hi
+        STA     bindcb + IO_DCB::daux2 - DCB
 
     ;---------------------------------------
     ; Send Read request to SIO
     ;---------------------------------------
-        LDA     #<BINDCB
-        LDY     #>BINDCB
-        JSR     DOSIOV
+        LDA     #<bindcb
+        LDY     #>bindcb
+        JSR     dosiov
 
     ;---------------------------------------
     ; Advance start address by buffer length
@@ -393,11 +361,11 @@ GETDAT_DOSIOV:
 
 GETDAT_CHECK_EOF:
     ; Get status (updates DVSTAT, DSTATS)
-        LDA     BINDCB+DCB_IDX.DUNIT
-        STA     STADCB+DCB_IDX.DUNIT
-        LDA     #<STADCB
-        LDY     #>STADCB
-        JSR     DOSIOV
+        LDA     bindcb + IO_DCB::dunit - DCB
+        STA     stadcb + IO_DCB::dunit - DCB
+        LDA     #<stadcb
+        LDY     #>stadcb
+        JSR     dosiov
 
     ; Return -1 if DVSTAT == $0000 and DVSTAT+3 == EOF
         LDA     DVSTAT
@@ -406,7 +374,7 @@ GETDAT_CHECK_EOF:
         LDA     DVSTAT+1
         BNE     CHECK_EOF_DONE
 
-        LDA     #EOF
+        LDA     #EOFERR         ; 136 defined in atari.inc
         CMP     DVSTAT+3        ; Is it EOF
         BNE     CHECK_EOF_DONE  ; No? Go to success
         LDY     #$FF            ; Yes? Return -1
@@ -416,24 +384,22 @@ CHECK_EOF_DONE:
         LDY     #$01        ; Return success
         RTS
 
-                                ; Binary loader working variables
-BAL     .ds 1
-BAH     .ds 1    ;
-STL     .ds 1      ; Payload Start address
-STH     .ds 1
-ENL     .ds 1    ; Payload End address
-ENH     .ds 1
-HEADL   .ds 1    ; Bytes read from existing cache
-HEADH   .ds 1
-BODYL   .ds 1    ; Total bytes read in contiguous 512-byte blocks
-BODYH   .ds 1
-BLL     .ds 1    ; Payload Buffer Length
-BLH     .ds 1
-TAILL   .ds 1   ; Bytes read from last cache
-TAILH   .ds 1
-BODYSZL .ds 1   ; # Bytes to read at a time in Body
-BODYSZH .ds 1
-STL2    .ds 1   ; Payload Start address (working var)
-STH2    .ds 1
-BIN_1ST .ds 1   ; Flag for binary loader signature (FF -> 1st pass)
-        
+
+BAL:            .res 1
+BAH:            .res 1
+STL:            .res 1
+STH:            .res 1
+ENL:            .res 1
+ENH:            .res 1
+HEADL:          .res 1
+HEADH:          .res 1
+BODYL:          .res 1
+BODYH:          .res 1
+BLL:            .res 1
+BLH:            .res 1
+TAILL:          .res 1
+TAILH:          .res 1
+STL2:           .res 1
+STH2:           .res 1
+BIN_1ST:        .res 1
+

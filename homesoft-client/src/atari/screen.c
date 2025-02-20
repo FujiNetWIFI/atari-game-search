@@ -12,16 +12,35 @@
 #include "fujinet-network.h"
 #include "screen.h"
 #include "bar.h"
-#include "loader.h"
 #include "charset.h"
 
+extern unsigned char _LSTACK_RUN__[];
+extern unsigned char _LSTACK_LOAD__[];
+extern unsigned char _LSTACK_SIZE__[];
+extern unsigned char _LOADER_RUN__[];
+extern unsigned char _LOADER_LOAD__[];
+extern unsigned char _LOADER_SIZE__[];
+
+extern void load_app(void);
+extern void reset_screen(void);
+
+extern char ascii_to_screen(char c);
+extern char screen_to_ascii(char c);
+
+extern void dli();
+extern void dli2();
+
+#pragma data-name (push,"SCREEN")
+#define RESULTS_MAX 128
+#define RESULTS_SIZE 128
+char results[RESULTS_MAX][RESULTS_SIZE];
+
+#pragma data-name (push,"DATA")
 static char title[] = "\x00\x00homesoft\x00\x00search\x00\x00";
 static char query[] = {0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-#define RESULTS_MAX 128 
-#define RESULTS_SIZE 128 
+char ds[256];
 
-char results[RESULTS_MAX][RESULTS_SIZE];
 unsigned char num_results=0;
 unsigned char pos_results=0;
 unsigned char pos_pan=0;
@@ -33,11 +52,8 @@ unsigned char pos_pan=0;
 #define DS_BASE "N:HTTPS://apps.irata.online/homesoft?query="
 #define LO_BASE "N:TNFS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
 
-char ds[256];
 
-extern void dli();
-extern void dli2();
-
+#pragma data-name (push,"DISPLAY")
 static void _dlist =
     {
         DL_DLI(DL_BLK8),
@@ -89,7 +105,7 @@ static void _dlist =
         DL_LMS(DL_CHR20x8x2),
         &query,
         DL_CHR20x8x2,
-	DL_BLK5,
+	    DL_BLK5,
         DL_JVB,
         &_dlist
     };
@@ -124,6 +140,8 @@ struct dlist_struct
     } jvb;
 };
 
+
+#pragma data-name (push,"CODE")
 void fetch(void)
 {
     unsigned int bw=0;
@@ -156,30 +174,6 @@ const char splash_2[]={0x00, 0x00, 0x00, 0x61, 0x6e, 0x79, 0x00, 0x67, 0x61, 0x6
 const char splash_3[]={0x00, 0x00, 0x00, 0x00, 0x00, 0x25, 0x6e, 0x74, 0x65, 0x72, 0x00, 0x61, 0x6e, 0x79, 0x00, 0x70, 0x61, 0x72, 0x74, 0x00, 0x6f, 0x66, 0x00, 0x61, 0x00, 0x67, 0x61, 0x6d, 0x65, 0x00, 0x74, 0x69, 0x74, 0x6c, 0x65, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 const char splash_4[]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x74, 0x6f, 0x00, 0x66, 0x69, 0x6e, 0x64, 0x00, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x69, 0x6e, 0x67, 0x00, 0x67, 0x61, 0x6d, 0x65, 0x73, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-char ascii_to_screen(char c)
-{
-    c &= 0x7F;
-
-    if (c<32)
-        c+=64;
-    else if (c<96)
-        c-=32;
-        
-    return c;
-}
-
-char screen_to_ascii(char d)
-{
-    unsigned char ud = d;
-    if (ud >= 64 && ud < 96) {
-        return ud - 64;
-    } else if (ud < 64) {
-        return ud + 32;
-    } else {
-        return ud;
-    }
-}
 
 void screen_splash(void)
 {
@@ -276,65 +270,42 @@ void input(void)
 }
 
 char select_text[]={0x00, 0x00, 0x00, 0x1C, 0x1D, 0x00, 0x6d, 0x6f, 0x76, 0x65, 0x00, 0x1E, 0x1F, 0x00, 0x70, 0x61, 0x6e, 0x00, 0x00, 0x00, 0x2f, 0x30, 0x34, 0x00, 0x62, 0x6f, 0x6f, 0x74, 0x00, 0x25, 0x33, 0x23, 0x00, 0x72, 0x65, 0x71, 0x75, 0x65, 0x72, 0x79};
+char tmp[128];
 
 void load(void)
 {
     unsigned char i=0;
     unsigned char l=RESULTS_SIZE;
-    
+
     memset(ds,0,sizeof(ds));
     strcpy(ds,LO_BASE);
+    memset(tmp,0,sizeof(tmp));
 
     while (l--)
         if (results[pos_results][l])
             break;
     
-    for (i=0;i<l;i++)
-        results[pos_results][i] = screen_to_ascii(results[pos_results][i]);
+    for (i = 0; i <= l; i++) {
+        // avoid screen corruption by copying to a temp buffer
+        tmp[i] = screen_to_ascii(results[pos_results][i]);
+    }
+    strcat(ds, tmp);
 
-    strcat(ds,results[pos_results]);
+    // reset before network open to show the message for a short time while it does its thing
+    reset_screen();
+
+    // this adds 113 bytes to the code size, but shows the short name of the game being loaded
+    // cputsxy(0, 0, "loading ");
+    // cputs(tmp);
 
     network_open(ds,4,0);
 
-    memcpy((void *)0x0120,loader_stack_bin,sizeof(loader_stack_bin));
-    memcpy((void *)0x3FD,loader_bin,sizeof(loader_bin)); 
+    // move the relocatable code to its target location. See custom-atari.cfg
+    memcpy(_LSTACK_RUN__, _LSTACK_LOAD__, _LSTACK_SIZE__);
+    memcpy(_LOADER_RUN__, _LOADER_LOAD__, _LOADER_SIZE__);
 
-    ANTIC.pmbase = 0x00;
-    
-    OS.sdmctl = 0x0;
-    OS.chbas = 0xe0;
-    OS.sdlst = (void *)0xBC20;
-
-    OS.pcolr0 =
-        OS.pcolr1 =
-        OS.pcolr2 =
-        OS.pcolr3 = 0;
-
-    OS.color0 = 0x28;
-    OS.color1 = 0xca;
-    OS.color2 = 0x94;
-    OS.color3 = 0x46;
-    OS.color4 = 0x00;
-    
-    GTIA_WRITE.hposp0 =
-        GTIA_WRITE.hposp1 =
-        GTIA_WRITE.hposp2 =
-        GTIA_WRITE.hposp3 =
-        GTIA_WRITE.hposm0 =
-        GTIA_WRITE.hposm1 =
-        GTIA_WRITE.hposm2 =
-        GTIA_WRITE.hposm3 = 0;
-    
-    GTIA_WRITE.gractl = 0;
-    GTIA_WRITE.sizep0 =
-        GTIA_WRITE.sizep1 =
-        GTIA_WRITE.sizep2 =
-        GTIA_WRITE.sizep3 = 
-        GTIA_WRITE.sizem = 0;
-    
-    __asm__("JMP $03FD");
-
-    while(1);
+    // off we go!
+    load_app();
 }
 
 /**

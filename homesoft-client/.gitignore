@@ -17,3 +17,6 @@ AppleWin.log
 
 assets/*
 !assets/README.md
+
+_libs/*
+_cache/*
