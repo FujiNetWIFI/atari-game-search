@@ -128,26 +128,21 @@ LOAD_STRAD:
     ; Save payload start address into STL2/STLH2.
     ; Otherwise it will get clobbered
     ; when reading payload end address.
-        LDA     BAL
-        STA     STL2
-        LDA     BAH
-        STA     STH2
-        RTS
+        LDX     #$00        ; BAL/BAH
+        LDY     #$0E        ; STL2/STH2
+        JMP     COPY_VAR
 
 ;---------------------------------------
 LOAD_ENDAD:
 ;---------------------------------------
     ; Save payload end address
-        LDA     STL2
-        STA     STL
-        LDA     STH2
-        STA     STH
+        LDX     #$0E        ; STL2/STH2
+        LDY     #$02        ; STL/STH
+        JSR     COPY_VAR
 
-        LDA     BAL
-        STA     ENL
-        LDA     BAH
-        STA     ENH
-        RTS
+        LDX     #$00        ; BAL/BAH
+        LDY     #$04        ; ENL/ENH
+        JMP     COPY_VAR
 
 ;---------------------------------------
 LOAD_BUFLEN:
@@ -181,7 +176,8 @@ LOAD_GETDAT:
     ; TAIL = any bytes remaining after BODY (< 512 bytes)
 
         JSR     GETDAT_CHECK_EOF    ; Check EOF before proceeding
-        BCC     GETDAT_NEXT1        ; If true, then EOF found. Exit
+        BCC     GETDAT_NEXT1        ; If C is clear there's more data to read
+        ; If C is set, then EOF found, so exit
         RTS
 
     ; Check if bytes requested BL < DVSTAT (bytes waiting in cache)
@@ -252,10 +248,10 @@ GETDAT_OPT2:
     ;--------------------------------
     ; Head = BL, TAIL = BODY = 0
     ;--------------------------------
-        LDA     BLL
-        STA     HEADL
-        LDA     BLH
-        STA     HEADH
+        LDX     #$0A        ; BLL/BLH
+        LDY     #$06        ; HEADL/HEADH
+        JSR     COPY_VAR
+
         LDA     #$00
         STA     TAILL
         STA     TAILH
@@ -268,10 +264,10 @@ GETDAT_READ:
     ;---------------------------------------
     ; Read HEAD bytes
     ;---------------------------------------
-        LDA     HEADL
-        STA     BLL
-        LDA     HEADH
-        STA     BLH
+        LDX     #$06        ; HEADL/HEADH
+        LDY     #$0A        ; BLL/BLH
+        JSR     COPY_VAR
+
         JSR     GETDAT_DOSIOV
         BCC     GETDAT_BODY ; Skip ahead if no problems
         RTS                 ; Bail if error
@@ -307,10 +303,9 @@ GETDAT_TAIL:
     ;---------------------------------------
     ; Read TAIL bytes
     ;---------------------------------------
-        LDA     TAILL
-        STA     BLL
-        LDA     TAILH
-        STA     BLH
+        LDX     #$0C        ; TAILL/TAILH
+        LDY     #$0A        ; BLL/BLH
+        JSR     COPY_VAR
 
 ;---------------------------------------
 GETDAT_DOSIOV:
@@ -320,7 +315,6 @@ GETDAT_DOSIOV:
         ORA     BLH
         BEQ     CHECK_EOF_DONE
 
-:
     ; SIO READ
         LDA     STL
         STA     bindcb + IO_DCB::dbuflo - DCB    ; Start Address Lo
@@ -352,6 +346,7 @@ GETDAT_DOSIOV:
         ADC     BLH
         STA     STH
 
+; Check if EOF, and return C=1 if so
 GETDAT_CHECK_EOF:
     ; Get status (updates DVSTAT, DSTATS)
         LDA     bindcb + IO_DCB::dunit - DCB
@@ -360,7 +355,7 @@ GETDAT_CHECK_EOF:
         LDY     #>stadcb
         JSR     dosiov
 
-    ; Return -1 if DVSTAT == $0000 and DVSTAT+3 == EOF
+    ; Return C=1 if DVSTAT == $0000 and DVSTAT+3 == EOF
         LDA     DVSTAT
         BNE     CHECK_EOF_DONE
 
@@ -371,30 +366,38 @@ GETDAT_CHECK_EOF:
         CMP     DVSTAT+3        ; Is it EOF
         BNE     CHECK_EOF_DONE  ; No? Go to success
 
-        ; Yes? Return C set (it's set by the CMP)
+        ; C = 1
+        ; Yes? Return with C set to indicate EOF met
         RTS
 
 CHECK_EOF_DONE:
         CLC        ; Return success
         RTS
 
+COPY_VAR:
+        LDA     VARSPACE, X
+        STA     VARSPACE, Y
+        LDA     VARSPACE + 1, X
+        STA     VARSPACE + 1, Y
+        RTS
+
 ; these have to be part of the LOADER segment
+VARSPACE:
+BAL:            .res 1  ; 00
+BAH:            .res 1  ; 01
+STL:            .res 1  ; 02 ; Payload Start address
+STH:            .res 1  ; 03
+ENL:            .res 1  ; 04 ; Payload End address
+ENH:            .res 1  ; 05
+HEADL:          .res 1  ; 06 ; Bytes read from existing cache
+HEADH:          .res 1  ; 07
+BODYL:          .res 1  ; 08 ; Total bytes read in contiguous 512-byte blocks
+BODYH:          .res 1  ; 09
+BLL:            .res 1  ; 0A ; Payload Buffer Length
+BLH:            .res 1  ; 0B
+TAILL:          .res 1  ; 0C ; Bytes read from last cache
+TAILH:          .res 1  ; 0D
+STL2:           .res 1  ; 0E ; Payload Start address (working var)
+STH2:           .res 1  ; 0F
 
-BAL:            .res 1
-BAH:            .res 1
-STL:            .res 1
-STH:            .res 1
-ENL:            .res 1
-ENH:            .res 1
-HEADL:          .res 1
-HEADH:          .res 1
-BODYL:          .res 1
-BODYH:          .res 1
-BLL:            .res 1
-BLH:            .res 1
-TAILL:          .res 1
-TAILH:          .res 1
-STL2:           .res 1
-STH2:           .res 1
-
-BIN_1ST:        .byte $FF
+BIN_1ST:        .byte $FF    ; Flag for binary loader signature (FF -> 1st pass)
