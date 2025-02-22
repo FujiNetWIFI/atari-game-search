@@ -32,7 +32,7 @@ char ascii_to_atari(char c)
 }
 
 void
-search_directory (const char *path, const char *target_lower)
+search_directory (const char *path, const char *target_lower, int inc_atr)
 {
   DIR *dir = opendir (path);
 
@@ -70,14 +70,17 @@ search_directory (const char *path, const char *target_lower)
 
       if (S_ISDIR (statbuf.st_mode))
 	{
-	  search_directory (fullpath, target_lower);
+	  search_directory (fullpath, target_lower, inc_atr);
 	}
 
-      if (strcasestr(entry->d_name,".atr"))
-	      continue;
+    int match = 0;
+    if (inc_atr && strcasestr(entry->d_name,".atr"))
+        match = 1;
+    else if (strcasestr(entry->d_name, ".xex"))
+        match = 1;
 
-      if (!strcasestr(entry->d_name, ".xex"))
-	      continue;
+    if (!match)
+        continue;
 
       if (strcasestr (entry->d_name, target_lower))
 	{
@@ -105,6 +108,7 @@ handle_request (int client_socket)
   char buffer[4096] = { 0 };
   char header[3072];
   char query[256] = { 0 };
+  int get_disks = 0;
 
   // Clear the result buffer
   memset (results,0x20, RESULTS_MAX*RESULTS_SIZE);
@@ -117,6 +121,9 @@ handle_request (int client_socket)
   char *q_param = strstr (buffer, "query=");
   if (q_param)
     {
+      if (strstr (buffer, "&d=1"))
+        get_disks = 1;
+
       // Extract query value
       sscanf (q_param, "query=%255[^ &\n\r]", query);
 
@@ -146,8 +153,8 @@ handle_request (int client_socket)
       *dst = '\0';
     }
 
-  printf("query is: %s\n",query);
-  search_directory(argv_path,query);
+  printf("query is: %s d=%d\n",query, get_disks);
+  search_directory(argv_path, query, get_disks);
 
   // Prepare response
   sprintf (header,
