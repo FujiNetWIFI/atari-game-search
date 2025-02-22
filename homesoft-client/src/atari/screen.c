@@ -10,6 +10,9 @@
 #include <conio.h>
 #include <string.h>
 #include "fujinet-network.h"
+#ifdef ENABLE_BOOTSEL
+#include "fujinet-fuji.h"
+#endif
 #include "screen.h"
 #include "bar.h"
 #include "charset.h"
@@ -45,13 +48,32 @@ unsigned char num_results=0;
 unsigned char pos_results=0;
 unsigned char pos_pan=0;
 
+#ifdef ENABLE_BOOTSEL
+/*
+ * 0 = N: over TNFS
+ * 1 = N: over HTTPS
+ * 2 = D: over TNFS
+ * 3 = D: over HTTPS
+ */
+unsigned char boot_method=0;
+#endif
+
 #define BAR_TOP_OF_WINDOW 2
 #define BAR_BOTTOM_OF_WINDOW 21
 #define NUM_LINES 20
 
 #define DS_BASE "N:HTTPS://apps.irata.online/homesoft?query="
-#define LO_BASE "N:TNFS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
+//#define DS_BASE "N:http://localhost:1080/homesoft?query="
 
+#ifdef ENABLE_BOOTSEL
+#define DS_DISK_OPT "&d=1"
+#define LO_BASE_PROTO1 "N:TNFS"
+#define LO_BASE_PROTO2 "N:https"
+#define LO_BASE_HOST "://apps.irata.online"
+#define LO_BASE_DIR "/Atari_8-bit/Games/Homesoft/"
+#else
+#define LO_BASE "N:TNFS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
+#endif
 
 #pragma data-name (push,"DISPLAY")
 static void _dlist =
@@ -252,6 +274,11 @@ void input(void)
         ds[k++] = screen_to_ascii(query[i]);
 
     ds[k] = 0x00;
+
+#ifdef ENABLE_BOOTSEL
+    // append option to search for disk images too (ATR)
+    strcat(ds, DS_DISK_OPT);
+#endif
     
     /* turn spaces into + */
     for (i=0;i<strlen(ds);i++)
@@ -269,16 +296,41 @@ void input(void)
     count();
 }
 
+#ifdef ENABLE_BOOTSEL
+char select_text[]={0x1C, 0x1D, 0x00, 0x6d, 0x6f, 0x76, 0x65, 0x00, 0x1E, 0x1F, 0x00, 0x70, 0x61, 0x6e, 0x00, 0x33, 0x25, 0x2c, 0x00, 0x00, 0x2f, 0x30, 0x34, 0x00, 0x62, 0x6f, 0x6f, 0x74, 0x00, 0x25, 0x33, 0x23, 0x00, 0x72, 0x65, 0x71, 0x75, 0x65, 0x72, 0x79};
+char tmp[256];
+#else
 char select_text[]={0x00, 0x00, 0x00, 0x1C, 0x1D, 0x00, 0x6d, 0x6f, 0x76, 0x65, 0x00, 0x1E, 0x1F, 0x00, 0x70, 0x61, 0x6e, 0x00, 0x00, 0x00, 0x2f, 0x30, 0x34, 0x00, 0x62, 0x6f, 0x6f, 0x74, 0x00, 0x25, 0x33, 0x23, 0x00, 0x72, 0x65, 0x71, 0x75, 0x65, 0x72, 0x79};
 char tmp[128];
+#endif
 
 void load(void)
 {
     unsigned char i=0;
     unsigned char l=RESULTS_SIZE;
+    unsigned char sep;
 
     memset(ds,0,sizeof(ds));
+
+#ifdef ENABLE_BOOTSEL
+    if (boot_method & 1)
+    {
+        // HTTPS
+        strcpy(ds, LO_BASE_PROTO2);
+        sep = sizeof(LO_BASE_PROTO2 LO_BASE_HOST) - 1;
+    }
+    else
+    {
+        // TNFS
+        strcpy(ds,LO_BASE_PROTO1);
+        sep = sizeof(LO_BASE_PROTO1 LO_BASE_HOST) - 1;
+    }
+    strcat(ds, LO_BASE_HOST LO_BASE_DIR);
+#else
     strcpy(ds,LO_BASE);
+#endif
+
+
     memset(tmp,0,sizeof(tmp));
 
     while (l--)
@@ -291,12 +343,55 @@ void load(void)
     }
     strcat(ds, tmp);
 
+#ifdef ENABLE_BOOTSEL
+    // disk boot for ATR
+    i = strlen(tmp);
+    if (i >=4 && !strcasecmp(".atr", &tmp[i-4]))
+        boot_method |= 2;
+#endif
+
     // reset before network open to show the message for a short time while it does its thing
     reset_screen();
 
+#ifdef ENABLE_BOOTSEL
     // this adds 113 bytes to the code size, but shows the short name of the game being loaded
-    // cputsxy(0, 0, "loading ");
-    // cputs(tmp);
+    cputsxy(0, 0, "loading ");
+    cputs(tmp);
+    // wait a bit for restored screen before doing next SIO
+    i = OS.rtclok[2] + 2;
+    while (i != OS.rtclok[2]);
+
+    if (boot_method & 2)
+    {
+        // disk boot
+
+        // get hosts into tmp
+        fuji_get_host_slots((unsigned char (*)[sizeof(HostSlot)])tmp, 8);
+        // skip "N:TNFS://" or "N:" for HTTPS
+        i = (boot_method & 1) ? 2 : 9;
+        // split host and path part (first slash in path)
+        ds[sep] = '\0';
+        // host already exists?
+        for(l = 0; l < 8; l++)
+            if (!strcasecmp(&tmp[l*sizeof(HostSlot)], &ds[i]))
+                break;
+        if (l == 8)
+        {
+            // set new host to slot 8
+            strcpy(&tmp[7*sizeof(HostSlot)], &ds[i]);
+            fuji_put_host_slots((unsigned char (*)[sizeof(HostSlot)])tmp, 8);
+            l = 7;
+        }
+        // restore first character in path
+        ds[sep] = '/';
+        // set file path into device slot
+        fuji_set_device_filename(0, l, 0, &ds[sep]);
+        // get ready
+        fuji_mount_all();
+        // cold start to boot from disk
+        asm ("JMP $E477");
+    }
+#endif
 
     network_open(ds,4,0);
 
@@ -396,14 +491,32 @@ void pan_right(void)
     pos_pan++;
 }
 
+#ifdef ENABLE_BOOTSEL
+void toggle_boot(void)
+{
+    boot_method++;
+    boot_method &= 3;
+    query[19] = boot_method + 0x61;
+    while (CONSOL_SELECT(GTIA_READ.consol));
+}
+#endif
+
 void select(void)
 {
     memcpy(query,select_text,sizeof(select_text));
+#ifdef ENABLE_BOOTSEL
+    query[19] = boot_method + 0x61;
+#endif
 
     while (1)
     {
         if (CONSOL_OPTION(GTIA_READ.consol))
             load();
+
+#ifdef ENABLE_BOOTSEL
+        if (CONSOL_SELECT(GTIA_READ.consol))
+            toggle_boot();
+#endif
 
         switch (joystick())
         {
