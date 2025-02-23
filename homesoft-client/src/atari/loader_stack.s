@@ -55,7 +55,7 @@ stadcb:
         .BYTE   $40         ; DSTATS
         .BYTE   <DVSTAT     ; DBUFL
         .BYTE   >DVSTAT     ; DBUFH
-        .BYTE   $05         ; DTIMLO
+        .BYTE   $0F         ; DTIMLO
         .BYTE   $00         ; DRESVD
         .BYTE   $04         ; DBYTL
         .BYTE   $00         ; DBYTH
@@ -69,7 +69,7 @@ stadcb:
 ;         .BYTE   $00         ; DSTATS
 ;         .BYTE   $00         ; DBUFL
 ;         .BYTE   $00         ; DBUFH
-;         .BYTE   $05         ; DTIMLO
+;         .BYTE   $0F         ; DTIMLO
 ;         .BYTE   $00         ; DRESVD
 ;         .BYTE   $00         ; DBYTL
 ;         .BYTE   $00         ; DBYTH
@@ -83,7 +83,7 @@ bindcb:
         .BYTE   $40         ; DSTATS
         .BYTE   $FF         ; DBUFL
         .BYTE   $FF         ; DBUFH
-        .BYTE   $05         ; DTIMLO
+        .BYTE   $0F         ; DTIMLO
         .BYTE   $00         ; DRESVD
         .BYTE   $FF         ; DBYTL
         .BYTE   $FF         ; DBYTH

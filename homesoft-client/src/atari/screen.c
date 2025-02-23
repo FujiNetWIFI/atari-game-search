@@ -50,7 +50,7 @@ unsigned char pos_pan=0;
 #define NUM_LINES 20
 
 #define DS_BASE "N:HTTPS://apps.irata.online/homesoft?query="
-#define LO_BASE "N:TNFS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
+#define LO_BASE "N:HTTPS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
 
 
 #pragma data-name (push,"DISPLAY")
@@ -272,6 +272,27 @@ void input(void)
 char select_text[]={0x00, 0x00, 0x00, 0x1C, 0x1D, 0x00, 0x6d, 0x6f, 0x76, 0x65, 0x00, 0x1E, 0x1F, 0x00, 0x70, 0x61, 0x6e, 0x00, 0x00, 0x00, 0x2f, 0x30, 0x34, 0x00, 0x62, 0x6f, 0x6f, 0x74, 0x00, 0x25, 0x33, 0x23, 0x00, 0x72, 0x65, 0x71, 0x75, 0x65, 0x72, 0x79};
 char tmp[128];
 
+void debug(void) {
+}
+
+void url_encode(char *str) {
+    char *src = str;
+    char *dst = tmp;
+    
+    while (*src) {
+        if (*src == ' ') {
+            *dst++ = '%';
+            *dst++ = '2';
+            *dst++ = '0';
+        } else {
+            *dst++ = *src;
+        }
+        src++;
+    }
+    *dst = '\0';
+    strcpy(str, tmp);
+}
+
 void load(void)
 {
     unsigned char i=0;
@@ -290,6 +311,7 @@ void load(void)
         tmp[i] = screen_to_ascii(results[pos_results][i]);
     }
     strcat(ds, tmp);
+    url_encode(ds);
 
     // reset before network open to show the message for a short time while it does its thing
     reset_screen();
@@ -305,6 +327,7 @@ void load(void)
     memcpy(_LOADER_RUN__, _LOADER_LOAD__, _LOADER_SIZE__);
 
     // off we go!
+    debug();
     load_app();
 }
 
