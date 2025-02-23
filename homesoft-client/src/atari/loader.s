@@ -28,12 +28,13 @@
 .segment "LOADER"
 
 _load_app:
-        JSR     clear_menu
-        JSR     load_setup
         JSR     LOAD_READ2
         JSR     LOAD_CHKFF
+        ; is this an xex file? C=1 if it is not.
         BCS     R
 
+        JSR     clear_menu
+        JSR     load_setup
         INC     BIN_1ST
         ; Process each payload
 GETFIL: JSR     LOAD_READ2      ; Get two bytes (binary header)

@@ -9,6 +9,7 @@
 #include <atari.h>
 #include <conio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "fujinet-network.h"
 #include "screen.h"
 #include "bar.h"
@@ -40,6 +41,7 @@ static char title[] = "\x00\x00homesoft\x00\x00search\x00\x00";
 static char query[] = {0x3F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 char ds[256];
+bool was_error = false;
 
 unsigned char num_results=0;
 unsigned char pos_results=0;
@@ -146,6 +148,7 @@ struct dlist_struct
 
 
 #pragma data-name (push,"CODE")
+
 void fetch(void)
 {
     unsigned int bw=0;
@@ -181,6 +184,7 @@ const char splash_4[]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7
 
 void screen_splash(void)
 {
+    // memset(results,0,sizeof(results));
     memcpy(&results[4],splash_1,sizeof(splash_1));
     memcpy(&results[5],splash_2,sizeof(splash_2));
     memcpy(&results[7],splash_3,sizeof(splash_3));
@@ -276,9 +280,6 @@ void input(void)
 char select_text[]={0x00, 0x00, 0x00, 0x1C, 0x1D, 0x00, 0x6d, 0x6f, 0x76, 0x65, 0x00, 0x1E, 0x1F, 0x00, 0x70, 0x61, 0x6e, 0x00, 0x00, 0x00, 0x2f, 0x30, 0x34, 0x00, 0x62, 0x6f, 0x6f, 0x74, 0x00, 0x25, 0x33, 0x23, 0x00, 0x72, 0x65, 0x71, 0x75, 0x65, 0x72, 0x79};
 char tmp[128];
 
-void debug(void) {
-}
-
 void url_encode(char *str) {
     char *src = str;
     char *dst = tmp;
@@ -322,10 +323,6 @@ void load(void)
     // reset before network open to show the message for a short time while it does its thing
     reset_screen();
 
-    // this adds 113 bytes to the code size, but shows the short name of the game being loaded
-    // cputsxy(0, 0, "loading ");
-    // cputs(tmp);
-
     network_open(ds,4,0);
 
     // move the relocatable code to its target location. See custom-atari.cfg
@@ -333,8 +330,13 @@ void load(void)
     memcpy(_LOADER_RUN__, _LOADER_LOAD__, _LOADER_SIZE__);
 
     // off we go!
-    debug();
     load_app();
+
+    // if we get here, the file was not an xex file, or some other error occurred
+    // so we need to show a message
+    cputsxy(0, 0, "Error loading file.");
+    cputsxy(0, 1, "Press any key to continue...");
+    cgetc();
 }
 
 /**
@@ -425,14 +427,19 @@ void pan_right(void)
     pos_pan++;
 }
 
-void select(void)
+bool select(void)
 {
+    bool keep_running = true;
     memcpy(query,select_text,sizeof(select_text));
 
     while (1)
     {
-        if (CONSOL_OPTION(GTIA_READ.consol))
-            load();
+        if (CONSOL_OPTION(GTIA_READ.consol)) {
+            load(); // this will only return if there was an error
+            keep_running = false;
+            was_error = true;
+            break;
+        }
 
         switch (joystick())
         {
@@ -450,8 +457,12 @@ void select(void)
             break;
         }
 
-        if (!OS.strig0)
-            load();
+        if (!OS.strig0) {
+            load(); // this will only return if there was an error
+            keep_running = false;
+            was_error = true;
+            break;
+        }
         
         if (!kbhit())
             continue;
@@ -459,7 +470,7 @@ void select(void)
         switch(cgetc())
         {
         case 0x1B:
-            return;
+            return true;
         case 0x8E:
         case 0x1C:
         case '-':
@@ -482,11 +493,13 @@ void select(void)
             break;
         }
     }
+    return keep_running;
 }
 
 void screen_query(void)
-{    
+{
     unsigned char caddr = (unsigned short)&charset[0] >> 8;
+    bool keep_running = true;
 
     PIA.portb = 0xFF; // Turn off BASIC
     OS.coldst = 1;    // Force coldstart
@@ -503,9 +516,10 @@ void screen_query(void)
     bar_setup_regs();
     bar_show(BAR_TOP_OF_WINDOW);
 
-    while(1)
+    while(keep_running)
     {
-        input();
-        select();
+        if (!was_error) input();
+        was_error = false;
+        keep_running = select();
     }
 }

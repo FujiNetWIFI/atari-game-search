@@ -9,7 +9,11 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
+#include <stdbool.h>
+
 void screen_query(void);
 void screen_splash(void);
+
+extern bool was_error;
 
 #endif /* SCREEN_H */

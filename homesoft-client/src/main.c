@@ -5,6 +5,8 @@ char *version = "1.0.0";
 int main() 
 {
     screen_splash();
-    screen_query();
+    while (1) {
+        screen_query();
+    }
     return 0;
 }

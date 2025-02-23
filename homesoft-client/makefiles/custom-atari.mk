@@ -49,8 +49,8 @@ ALTIRRA ?= $(ALTIRRA_HOME)/Altirra64.exe \
 # Additional args that can be copied into the above lines
 #   $(XS)/debug \
 #   $(XS)/debugcmd: ".loadsym build\$(PROGRAM).$(CURRENT_TARGET).lbl" \
+#   $(XS)/debugcmd: "bp _debug" \
 #   $(XS)/debugcmd: "bp _do_load" \
-#  $(XS)/debugcmd: "bp _debug" \
 
 
 ATARI800 ?= $(ATARI800_HOME)/atari800 \

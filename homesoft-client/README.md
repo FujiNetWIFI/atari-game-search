@@ -2,6 +2,14 @@
 
 Simple, clean interface for searching and playing games from HomeSoft.
 
+## Specifying alternate base URLs
+
+You can specify alternate base URLs for the search and load URLs by setting values during the build for LO_BASE and DS_BASE.
+
+```sh
+make LO_BASE=N:TNFS://apps.irata.online/Atari_8-bit/Games/Homesoft/ clean release
+```
+
 ## building
 
 To build the application ensure you have the correct compiler/linker for your platform (e.g. cc65), and
