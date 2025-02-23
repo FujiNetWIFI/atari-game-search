@@ -103,23 +103,23 @@ LOAD_CHKFF:
     ; On 1st pass, we're done.
     ; On 2..n passes, read next 2 bytes and leave.
     ;---------------------------------------
-        CMP     BIN_1ST     ; Is this 1st pass?
-        BEQ     NOTFF_DONE  ; If yes, then we're done here.
+        BIT     BIN_1ST     ; Is this 1st pass? If so, N is set
+        BMI     NOTFF_DONE  ; If yes, then we're done here.
         JMP     LOAD_READ2  ;
 
     ;---------------------------------------
     ; Here if FF FF tags NOT found.
-    ; On 1st pass, print error.
+    ; On 1st pass,return failure via C.
     ; On 2..n passes, the 2 bytes = payload start addr.
     ;---------------------------------------
 NOTFF:
-        CMP     BIN_1ST     ; A still has FF. BIN_1ST = FF on first pass
-        BNE     NOTFF_DONE  ; Not 1st pass, exit with success.
+        BIT     BIN_1ST     ; A still has FF. BIN_1ST = FF on first pass
+        BPL     NOTFF_DONE  ; Not 1st pass, ok to proceed.
 
-        ; Return failure (C is already set if the value matches in CMP)
+        SEC     ; Set C=1 for failure
         RTS
 NOTFF_DONE:
-        CLC
+        CLC     ; Clear C=0 for success
         RTS
 
 ;---------------------------------------
