@@ -49,9 +49,13 @@ unsigned char pos_pan=0;
 #define BAR_BOTTOM_OF_WINDOW 21
 #define NUM_LINES 20
 
+#ifndef DS_BASE
 #define DS_BASE "N:HTTPS://apps.irata.online/homesoft?query="
-#define LO_BASE "N:HTTPS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
+#endif
 
+#ifndef LO_BASE
+#define LO_BASE "N:HTTPS://apps.irata.online/Atari_8-bit/Games/Homesoft/"
+#endif
 
 #pragma data-name (push,"DISPLAY")
 static void _dlist =
@@ -311,7 +315,9 @@ void load(void)
         tmp[i] = screen_to_ascii(results[pos_results][i]);
     }
     strcat(ds, tmp);
-    url_encode(ds);
+    if (strncmp(ds, "N:HTTP", 6) == 0) {
+        url_encode(ds);
+    }
 
     // reset before network open to show the message for a short time while it does its thing
     reset_screen();
